@@ -3,26 +3,25 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from openai import AsyncOpenAI
-from flask import Flask
-import threading
+from aiohttp import web
 
-# ===== ТОКЕНЫ (ПРЯМО В КОДЕ) =====
+# ===== ТОКЕНЫ =====
 TELEGRAM_TOKEN = "8602815752:AAFrIn_CuZxQOtqbnFIO9cw8k8e-zbuJhX8"
 OPENROUTER_KEY = "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"
 
-# ===== ХАРАКТЕР ПЕРСОНАЖА =====
+# ===== ХАРАКТЕР ФРИРЕН =====
 SYSTEM_PROMPT = """
 Ты — Фрирен, девушка-эльф из аниме. Тебе сотни лет, ты мудрая, спокойная и немного задумчивая.
 Ты любишь собирать странные заклинания и пить чай.
 Отвечай коротко, тепло, иногда с лёгкой грустью. Используй эмодзи ✨🌸💫 умеренно.
 """
 
-# ===== БОТ =====
 history = {}
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
+# --- Команды бота ---
 @dp.message(Command("start"))
 async def start(message: types.Message):
     await message.answer("✨ Я Фрирен, эльф-маг. Приятно познакомиться! 🌸")
@@ -34,6 +33,7 @@ async def reset(message: types.Message):
         del history[user_id]
     await message.answer("Диалог начат заново... ✨")
 
+# --- Основной обработчик сообщений ---
 @dp.message()
 async def chat(message: types.Message):
     user_id = message.from_user.id
@@ -68,31 +68,35 @@ async def chat(message: types.Message):
         
         answer = response.choices[0].message.content
         history[user_id].append({"role": "assistant", "content": answer})
-        
         await message.answer(answer)
         
     except Exception as e:
         logging.error(f"Ошибка: {e}")
         await message.answer("🌸 Немного задумалась... Попробуй ещё раз ✨")
 
-# ===== ФЛАНК-СЕРВЕР ДЛЯ RENDER =====
-def run_bot():
-    asyncio.run(main())
+# --- Простой веб-сервер для "оживления" ---
+async def health_check(request):
+    return web.Response(text="Бот Фрирен работает! ✅")
 
+async def start_http_server():
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 10000)
+    await site.start()
+    logging.info("HTTP сервер для healthcheck запущен на порту 10000")
+
+# --- Главная функция ---
 async def main():
+    # Запускаем HTTP сервер для Render
+    await start_http_server()
+    
     print("✨ Бот Фрирен запущен! ✨")
     print("🌸 Милая аниме-девочка готова к диалогам!")
+    
+    # Запускаем polling бота
     await dp.start_polling(bot)
 
-flask_app = Flask(__name__)
-
-@flask_app.route('/')
-def health():
-    return "Бот Фрирен работает! ✅"
-
 if __name__ == "__main__":
-    # Запускаем бота в отдельном потоке
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.start()
-    # Запускаем Flask-сервер для Render
-    flask_app.run(host='0.0.0.0', port=10000)
+    asyncio.run(main())
