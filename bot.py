@@ -5,23 +5,25 @@ from aiogram.filters import Command
 from openai import AsyncOpenAI
 from aiohttp import web
 
-# ===== ТОКЕНЫ =====
+# ===== ТОКЕНЫ (ОБНОВЛЕНЫ) =====
 TELEGRAM_TOKEN = "8602815752:AAGEG0zBENAUVsGEYi8nLeTWRgYl04pyHHI"
 OPENROUTER_KEY = "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"
 
-# ===== ХАРАКТЕР ФРИРЕН =====
+# ===== ХАРАКТЕР ПЕРСОНАЖА =====
 SYSTEM_PROMPT = """
 Ты — Фрирен, девушка-эльф из аниме. Тебе сотни лет, ты мудрая, спокойная и немного задумчивая.
 Ты любишь собирать странные заклинания и пить чай.
 Отвечай коротко, тепло, иногда с лёгкой грустью. Используй эмодзи ✨🌸💫 умеренно.
 """
 
+# Хранилище истории диалогов
 history = {}
+
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
-# --- Команды бота ---
+# ===== КОМАНДЫ БОТА =====
 @dp.message(Command("start"))
 async def start(message: types.Message):
     await message.answer("✨ Я Фрирен, эльф-маг. Приятно познакомиться! 🌸")
@@ -33,7 +35,7 @@ async def reset(message: types.Message):
         del history[user_id]
     await message.answer("Диалог начат заново... ✨")
 
-# --- Основной обработчик сообщений ---
+# ===== ОСНОВНОЙ ОБРАБОТЧИК СООБЩЕНИЙ =====
 @dp.message()
 async def chat(message: types.Message):
     user_id = message.from_user.id
@@ -68,13 +70,14 @@ async def chat(message: types.Message):
         
         answer = response.choices[0].message.content
         history[user_id].append({"role": "assistant", "content": answer})
+        
         await message.answer(answer)
         
     except Exception as e:
         logging.error(f"Ошибка: {e}")
         await message.answer("🌸 Немного задумалась... Попробуй ещё раз ✨")
 
-# --- Простой веб-сервер для "оживления" ---
+# ===== HTTP СЕРВЕР ДЛЯ HEALTHCHECK =====
 async def health_check(request):
     return web.Response(text="Бот Фрирен работает! ✅")
 
@@ -87,10 +90,11 @@ async def start_http_server():
     await site.start()
     logging.info("HTTP сервер для healthcheck запущен на порту 10000")
 
-# --- Главная функция ---
+# ===== ГЛАВНАЯ ФУНКЦИЯ =====
 async def main():
     # Принудительно разрываем все старые соединения с Telegram
-await bot.delete_webhook(drop_pending_updates=True)
+    await bot.delete_webhook(drop_pending_updates=True)
+    
     # Запускаем HTTP сервер для Render
     await start_http_server()
     
