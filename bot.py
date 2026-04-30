@@ -3,9 +3,11 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from openai import AsyncOpenAI
+from flask import Flask
+import threading
 
 # ===== ТОКЕНЫ (ПРЯМО В КОДЕ) =====
-TELEGRAM_TOKEN = "8602815752:AAGwdyfYRNERkaYue54wVjqoCPnzKCjRvVY"
+TELEGRAM_TOKEN = "8602815752:AAFrIn_CuZxQOtqbnFIO9cw8k8e-zbuJhX8"
 OPENROUTER_KEY = "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"
 
 # ===== ХАРАКТЕР ПЕРСОНАЖА =====
@@ -15,9 +17,8 @@ SYSTEM_PROMPT = """
 Отвечай коротко, тепло, иногда с лёгкой грустью. Используй эмодзи ✨🌸💫 умеренно.
 """
 
-# Хранилище истории диалогов
+# ===== БОТ =====
 history = {}
-
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
@@ -38,13 +39,11 @@ async def chat(message: types.Message):
     user_id = message.from_user.id
     user_text = message.text
 
-    # Инициализируем историю
     if user_id not in history:
         history[user_id] = [{"role": "system", "content": SYSTEM_PROMPT}]
     
     history[user_id].append({"role": "user", "content": user_text})
     
-    # Ограничиваем историю
     if len(history[user_id]) > 21:
         history[user_id] = [history[user_id][0]] + history[user_id][-20:]
 
@@ -76,10 +75,24 @@ async def chat(message: types.Message):
         logging.error(f"Ошибка: {e}")
         await message.answer("🌸 Немного задумалась... Попробуй ещё раз ✨")
 
+# ===== ФЛАНК-СЕРВЕР ДЛЯ RENDER =====
+def run_bot():
+    asyncio.run(main())
+
 async def main():
     print("✨ Бот Фрирен запущен! ✨")
     print("🌸 Милая аниме-девочка готова к диалогам!")
     await dp.start_polling(bot)
 
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def health():
+    return "Бот Фрирен работает! ✅"
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Запускаем бота в отдельном потоке
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    # Запускаем Flask-сервер для Render
+    flask_app.run(host='0.0.0.0', port=10000)
