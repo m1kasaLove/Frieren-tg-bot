@@ -89,6 +89,8 @@ async def start_http_server():
 
 # --- Главная функция ---
 async def main():
+    # Принудительно разрываем все старые соединения с Telegram
+await bot.delete_webhook(drop_pending_updates=True)
     # Запускаем HTTP сервер для Render
     await start_http_server()
     
