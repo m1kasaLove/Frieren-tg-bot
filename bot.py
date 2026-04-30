@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from openai import AsyncOpenAI
 
 # ===== ТОКЕНЫ (ПРЯМО В КОДЕ) =====
-TELEGRAM_TOKEN = "8602815752:AAFrIn_CuZxQOtqbnFIO9cw8k8e-zbuJhX8"
+TELEGRAM_TOKEN = "8602815752:AAGwdyfYRNERkaYue54wVjqoCPnzKCjRvVY"
 OPENROUTER_KEY = "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"
 
 # ===== ХАРАКТЕР ПЕРСОНАЖА =====
